@@ -15,21 +15,27 @@
 package app
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"go.uber.org/zap"
 
 	"github.com/jaegertracing/jaeger/storage/spanstore"
+	"github.com/valyala/fasthttp"
 )
 
-func bearerTokenPropagationHandler(logger *zap.Logger, h http.Handler) http.Handler {
+func bearerTokenPropagationHandler(logger *zap.Logger, h http.Handler, validationAPI string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		authHeaderValue := r.Header.Get("Authorization")
 		// If no Authorization header is present, try with X-Forwarded-Access-Token
 		if authHeaderValue == "" {
 			authHeaderValue = r.Header.Get("X-Forwarded-Access-Token")
+		}
+		if authHeaderValue == "" {
+			authHeaderValue = r.Header.Get("EIToken")
 		}
 		if authHeaderValue != "" {
 			headerValue := strings.Split(authHeaderValue, " ")
@@ -43,12 +49,47 @@ func bearerTokenPropagationHandler(logger *zap.Logger, h http.Handler) http.Hand
 				// Tread all value as a token
 				token = authHeaderValue
 			} else {
-				logger.Warn("Invalid authorization header value, skipping token propagation")
+				logger.Error("Invalid authorization header value, skipping token propagation")
 			}
+			if err := tokenVerify(validationAPI, token); err != nil {
+				w.Header().Set("status", "401")
+				body := "{\"error\":\"Unauthorized \",\"message\":\"The url is not allowed to be accessed\"}"
+				var data []byte = []byte(body)
+				w.Write(data)
+				h.ServeHTTP(w, r.WithContext(ctx))
+				return
+			}
+
 			h.ServeHTTP(w, r.WithContext(spanstore.ContextWithBearerToken(ctx, token)))
 		} else {
+			w.Header().Set("status", "401")
+			body := "{\"error\":\"Unauthorized \",\"message\":\"The url is not allowed to be accessed\"}"
+			var data []byte = []byte(body)
+			w.Write(data)
 			h.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
 
+}
+
+func tokenVerify(url string, token string) error {
+	req := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(req)
+	req.Header.Add("Authorization", token)
+	req.Header.SetMethod(http.MethodPost)
+	req.SetRequestURI(url)
+	req.Header.Set("Content-Type", "application/json")
+	var data []byte = []byte("{\"token\":\"" + token + "\"}")
+	req.SetBody(data)
+
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(resp)
+
+	if err := fasthttp.Do(req, resp); err != nil {
+		return err
+	}
+	if resp.StatusCode() != 200 {
+		return errors.New("response code error:" + strconv.Itoa(resp.StatusCode()))
+	}
+	return nil
 }

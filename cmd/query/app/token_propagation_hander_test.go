@@ -68,7 +68,7 @@ func Test_bearTokenPropagationHandler(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			stop := sync.WaitGroup{}
 			stop.Add(1)
-			r := bearerTokenPropagationHandler(logger, testCase.handler(&stop))
+			r := bearerTokenPropagationHandler(logger, testCase.handler(&stop), "http://api-sso-ensaas.bm.wise-paas.com.cn/v4.0/tokenvalidation")
 			server := httptest.NewServer(r)
 			defer server.Close()
 			req, err := http.NewRequest("GET", server.URL, nil)

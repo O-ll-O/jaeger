@@ -108,7 +108,13 @@ func createHTTPServer(querySvc *querysvc.QueryService, queryOpts *QueryOptions, 
 	var handler http.Handler = r
 	handler = additionalHeadersHandler(handler, queryOpts.AdditionalHeaders)
 	if queryOpts.BearerTokenPropagation {
-		handler = bearerTokenPropagationHandler(logger, handler)
+		ssoURL := queryOpts.SSOURL
+
+		if ssoURL == "" {
+			logger.Error("SSOUrl is Empty,param is not config of query.ssoURL")
+		}
+		validateAPI := ssoURL + "/tokenvalidation"
+		handler = bearerTokenPropagationHandler(logger, handler, validateAPI)
 	}
 	handler = handlers.CompressHandler(handler)
 	recoveryHandler := recoveryhandler.NewRecoveryHandler(logger, true)

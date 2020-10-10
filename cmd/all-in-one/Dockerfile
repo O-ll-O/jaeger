@@ -32,4 +32,4 @@ COPY sampling_strategies.json /etc/jaeger/
 
 VOLUME ["/tmp"]
 ENTRYPOINT ["/go/bin/all-in-one-linux"]
-CMD ["--sampling.strategies-file=/etc/jaeger/sampling_strategies.json"]
+CMD ["--sampling.strategies-file=/etc/jaeger/sampling_strategies.json","--query.bearer-token-propagation=true","--query.ssoURL=http://api-sso-ensaas.bm.wise-paas.com.cn/v4.0"]

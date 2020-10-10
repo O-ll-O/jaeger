@@ -52,11 +52,11 @@ func bearerTokenPropagationHandler(logger *zap.Logger, h http.Handler, validatio
 				logger.Error("Invalid authorization header value, skipping token propagation")
 			}
 			if err := tokenVerify(validationAPI, token); err != nil {
-				w.Header().Set("status", "401")
-				body := "{\"error\":\"Unauthorized \",\"message\":\"The url is not allowed to be accessed\"}"
+				w.Header().Set("status", "403")
+				body := "{\"error\":\"Forbidden \",\"message\":\"The url is not allowed to be accessed\"}"
 				var data []byte = []byte(body)
 				w.Write(data)
-				h.ServeHTTP(w, r.WithContext(ctx))
+				// h.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
 
@@ -66,7 +66,7 @@ func bearerTokenPropagationHandler(logger *zap.Logger, h http.Handler, validatio
 			body := "{\"error\":\"Unauthorized \",\"message\":\"The url is not allowed to be accessed\"}"
 			var data []byte = []byte(body)
 			w.Write(data)
-			h.ServeHTTP(w, r.WithContext(ctx))
+			// h.ServeHTTP(w, r.WithContext(ctx))
 		}
 	})
 

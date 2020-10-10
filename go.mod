@@ -67,6 +67,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/uber/jaeger-client-go v2.23.1+incompatible
 	github.com/uber/jaeger-lib v2.2.0+incompatible
+	github.com/valyala/fasthttp v1.16.0
 	github.com/vektra/mockery v0.0.0-20181123154057-e78b021dcbb5
 	github.com/wadey/gocovmerge v0.0.0-20160331181800-b5bfa59ec0ad
 	go.mongodb.org/mongo-driver v1.3.2 // indirect

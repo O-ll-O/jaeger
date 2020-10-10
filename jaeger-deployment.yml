@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jeager-ui
+  namespace: ensaasmesh
+  labels:
+    app: jeager-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jeager-ui
+  template:
+    metadata:
+      labels:
+        app: jeager-ui
+    spec:
+      containers:
+        - name: jeager-ui
+          image: harbor.arfa.wise-paas.com/ensaasmesh/jaeger-all-in-one:v.0.0.6
+          imagePullPolicy: Always
+          args: 
+            - '--query.bearer-token-propagation=false'
+            - '--sampling.strategies-file=/etc/jaeger/sampling_strategies.json'
+            - '--query.ssoURL=http://api-sso-ensaas.bm.wise-paas.com.cn/v4.0'
+          env:
+          - name: SPAN_STORAGE_TYPE
+            value: badger
+          - name: BADGER_EPHEMERAL
+            value: "false"
+          - name: BADGER_DIRECTORY_KEY
+            value: /badger/key
+          - name: BADGER_DIRECTORY_VALUE
+            value: /badger/data
+          resources:
+            limits:
+              cpu: 2
+              memory: 1024Mi
+              ephemeral-storage: 1024Mi
+          volumeMounts:  
+          - name: badger-storage
+            mountPath: /badger
+      volumes:
+      - name: badger-storage
+        emptyDir: {}
+---     
+apiVersion: v1
+kind: Service
+metadata:
+  name: jeager-ui
+  namespace: ensaasmesh
+  labels:
+    app: jeager-ui
+spec:
+  ports:
+  - port: 16686
+    targetPort: 16686
+  type: LoadBalancer
+  selector:
+    app: jeager-ui

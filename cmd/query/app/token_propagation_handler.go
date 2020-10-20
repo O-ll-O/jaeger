@@ -31,29 +31,24 @@ func bearerTokenPropagationHandler(logger *zap.Logger, h http.Handler, validatio
 		ctx := r.Context()
 		authHeaderValue := r.Header.Get("Authorization")
 		// If no Authorization header is present, try with X-Forwarded-Access-Token
-		if authHeaderValue == "" {
-			authHeaderValue = r.Header.Get("X-Forwarded-Access-Token")
-		}
-		if authHeaderValue == "" {
-			authHeaderValue = r.Header.Get("EIToken")
-		}
+		token := ""
 		if authHeaderValue != "" {
-			headerValue := strings.Split(authHeaderValue, " ")
-			token := ""
-			if len(headerValue) == 2 {
-				// Make sure we only capture bearer token , not other types like Basic auth.
-				if headerValue[0] == "Bearer" {
-					token = headerValue[1]
-				}
-			} else if len(headerValue) == 1 {
-				// Tread all value as a token
-				token = authHeaderValue
-			} else {
-				logger.Error("Invalid authorization header value, skipping token propagation")
+			token = strings.TrimPrefix(authHeaderValue, "Bearer ")
+		}
+		if token == "" {
+			cookie, err := r.Cookie("EIToken")
+			if err != nil {
+				w.Header().Set("status", "401")
+				body := "{\"error\":\"Unauthorized \",\"message\":\"The url is not allowed to be accessed\"}"
+				var data []byte = []byte(body)
+				w.Write(data)
 			}
+			token = strings.TrimPrefix(cookie.String(), "EIToken=")
+		}
+		if token != "" {
 			if err := tokenVerify(validationAPI, token); err != nil {
-				w.Header().Set("status", "403")
-				body := "{\"error\":\"Forbidden \",\"message\":\"The url is not allowed to be accessed\"}"
+				w.Header().Set("status", "401")
+				body := "{\"error\":\"Unauthorized \",\"message\":\"The url is not allowed to be accessed\"}"
 				var data []byte = []byte(body)
 				w.Write(data)
 				// h.ServeHTTP(w, r.WithContext(ctx))
@@ -62,8 +57,8 @@ func bearerTokenPropagationHandler(logger *zap.Logger, h http.Handler, validatio
 
 			h.ServeHTTP(w, r.WithContext(spanstore.ContextWithBearerToken(ctx, token)))
 		} else {
-			w.Header().Set("status", "401")
-			body := "{\"error\":\"Unauthorized \",\"message\":\"The url is not allowed to be accessed\"}"
+			w.Header().Set("status", "403")
+			body := "{\"error\":\"Forbidden \",\"message\":\"The url is not carry token\"}"
 			var data []byte = []byte(body)
 			w.Write(data)
 			// h.ServeHTTP(w, r.WithContext(ctx))
